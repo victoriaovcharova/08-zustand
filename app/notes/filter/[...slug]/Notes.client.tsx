@@ -1,101 +1,67 @@
-"use client";
-import { useEffect, useState } from "react";
+'use client';
+
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { useDebounce } from "use-debounce";
-import { toast, Toaster } from "react-hot-toast";
-
-import { fetchNotes } from "@/lib/api";
-import SearchBox from "@/components/SearchBox/SearchBox";
+import { fetchNotes, FetchNotesResponse } from "@/lib/api";
 import NoteList from "@/components/NoteList/NoteList";
-import Loader from "@/components/Loader/Loader";
-import ErrorMessage from "@/components/ErrorMessage/ErrorMessage";
+import { useState } from "react";
+import { useDebouncedCallback } from "use-debounce";
+import SearchBox from "@/components/SearchBox/SearchBox";
+import css from "./NotesPage.module.css"
 import Pagination from "@/components/Pagination/Pagination";
-import Modal from "@/components/Modal/Modal";
-import NoteForm from "@/components/NoteForm/NoteForm";
-import TagsMenu from "@/components/TagsMenu/TagsMenu";
-import { Note } from "@/types/note";
+import Link from "next/link";
 
-import css from "./NotePage.module.css";
-
-interface Props {
-  initialData: {
-    notes: Note[];
-    totalPages: number;
-  };
-  initialTag: string;
+type Props = {
+  initialNotes: FetchNotesResponse;
+  tag: string;
 }
 
-const NotesClients = ({ initialData, initialTag }: Props) => {
-  const [page, setPage] = useState<number>(1);
-  const [tag, setTag] = useState<string>(initialTag);
-  const [search, setSearch] = useState<string>("");
-  const [debouncedSearch] = useDebounce(search.trim(), 500);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+export default function NotesClient({ initialNotes, tag }: Props) {
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
 
+    const handleSearch = useDebouncedCallback((search: string) => { setDebouncedSearch(search) }, 500);
 
-  useEffect(() => {
-    setTag(initialTag);
+  const handleSearchCange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const search = event.target.value;
+    setSearch(search);
     setPage(1);
-  }, [initialTag]);
-
-  const { data, isLoading, isError, isSuccess } = useQuery({
-    queryKey: ["notes", page, debouncedSearch, tag],
-    queryFn: () =>
-      fetchNotes(
-        debouncedSearch === ""
-          ? { page, tag }
-          : { page, search: debouncedSearch, tag }
-      ),
-    initialData:
-      page === 1 && debouncedSearch === "" && tag === initialTag
-        ? initialData
-        : undefined,
-    placeholderData: keepPreviousData,
-    refetchOnMount: false,
-  });
-
-  useEffect(() => {
-    if (!data) return;
-    if (data.notes.length === 0 && (debouncedSearch !== "" || tag)) {
-      toast.error("No notes found for your request.");
-    }
-  }, [data, debouncedSearch, tag]);
-
-  const notes = data?.notes ?? [];
-  const totalPages = data?.totalPages ?? 1;
-
-  const handleSearchChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
-    setSearch(e.target.value);
-    setPage(1);
+    handleSearch(search);
   };
 
-  return (
+
+    const { data, isLoading, isSuccess, error } = useQuery({
+        queryKey: ['notes', page, debouncedSearch, tag],
+        queryFn: () => fetchNotes({ page, perPage: 12, search: debouncedSearch, ...(tag !== "All" ? {tag} : {}) }),
+      placeholderData: keepPreviousData,
+        initialData: page === 1 && debouncedSearch === '' ? initialNotes : undefined,
+    });
+
+
+    if(isLoading) return <p>Loading, please wait...</p>;
+    if (error) return <p>Something went wrong: {error.message}</p>;
+    if (!data) return <p>No notes found.</p>;
+
+    return (
     <div className={css.app}>
-      <Toaster position="top-center" />
       <header className={css.toolbar}>
-        {/* Меню тегов само делает навигацию через <Link /> */}
-        <TagsMenu />
-        <SearchBox value={search} onChange={handleSearchChange} />
-        {isSuccess && totalPages > 1 && (
-          <Pagination total={totalPages} page={page} onChange={setPage} />
+        <SearchBox value={search} onChange={handleSearchCange} />
+       {data && data.total_pages > 1 && (
+          <Pagination
+            page={page}
+            total={data.total_pages}
+            onChange={setPage}
+          />
         )}
-        <button className={css.button} onClick={() => setIsModalOpen(true)}>
-          Create note +
-        </button>
+        <Link className={css.button} href="/notes/action/create">Create +</Link>
       </header>
-
-      {isLoading && <Loader />}
-      {isError && <ErrorMessage />}
-
-      <NoteList notes={notes} />
-
-      {isModalOpen && (
-        <Modal closeModal={() => setIsModalOpen(false)}>
-          <NoteForm closeModal={() => setIsModalOpen(false)} />
-        </Modal>
-      )}
-    </div>
+       
+      {isSuccess && data?.data?.length > 0 ? (
+        <NoteList notes={data.data} />)
+        : (
+          <p>No notes found</p>
+        )
+      }
+     </div>
   );
 };
-
-export default NotesClients;
