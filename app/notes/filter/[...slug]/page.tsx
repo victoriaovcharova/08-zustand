@@ -2,18 +2,14 @@ import { fetchNotes } from "@/lib/api";
 import NotesClient from "./Notes.client";
 import type { Metadata } from "next";
 
-type RouteParams = {
-  params: { slug?: string[] };
-};
+type PageProps = { params: { slug: string[] } };
 
-export async function generateMetadata({ params }: RouteParams): Promise<Metadata> {
-  const slug = params.slug ?? ["All"];
-  const rawTag = slug[0] ?? "All";
-  const tag = rawTag === "All" ? "All" : rawTag;
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const raw = params.slug[0];
+  const tag = raw === "All" ? "All" : raw;
 
   const title = `Notes: ${tag}`;
   const description = `${tag} notes list`;
-  const safeTagForUrl = encodeURIComponent(tag);
 
   return {
     title,
@@ -21,10 +17,9 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
     openGraph: {
       title,
       description,
-      url: `https://08-zustand-ten-kappa.vercel.app/notes/filter/${safeTagForUrl}`,
+      url: `https://08-zustand-ten-kappa.vercel.app/notes/filter/${encodeURIComponent(tag)}`,
       images: [
         {
-          // Використовуй з ТЗ:
           url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
           width: 1200,
           height: 630,
@@ -36,16 +31,14 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
   };
 }
 
-export default async function FilteredNotesPage({ params }: RouteParams) {
-  const slug = params.slug ?? ["All"];
-  const rawTag = slug[0] ?? "All";
-  const tag = rawTag === "All" ? undefined : rawTag;
+export default async function FilteredNotesPage({ params }: PageProps) {
+  const raw = params.slug[0];
+  const tag = raw === "All" ? undefined : raw;
 
   const initialNotes = await fetchNotes({
     search: "",
     page: 1,
-    perPage: 12,
-    tag,
+    ...(tag ? { tag } : {}),
   });
 
   return <NotesClient initialNotes={initialNotes} tag={tag ?? "All"} />;
