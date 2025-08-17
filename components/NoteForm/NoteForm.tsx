@@ -1,8 +1,9 @@
 'use client';
+
 import css from './NoteForm.module.css';
 import { useId } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createNote } from '@/lib/api';
 import { useNoteDraftStore } from '@/lib/store/noteStore';
 import type { NewNote } from '@/types/note';
@@ -12,6 +13,7 @@ const tags = ['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'];
 const NoteForm = () => {
   const router = useRouter();
   const id = useId();
+  const queryClient = useQueryClient();
 
   const handleClickCancel = () => router.push('/notes/filter/all');
 
@@ -23,9 +25,11 @@ const NoteForm = () => {
     setDraft({ ...draft, [event.target.name]: event.target.value });
   };
 
-  const { mutate } = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
+  const { mutate, isPending } = useMutation({
+    mutationFn: (payload: NewNote) => createNote(payload),
+    onSuccess: async () => {
+   
+      await queryClient.invalidateQueries({ queryKey: ['notes'] });
       clearDraft();
       router.push('/notes/filter/all');
     },
@@ -33,13 +37,6 @@ const NoteForm = () => {
 
   const handleSubmit = (formData: FormData) => {
     const data = Object.fromEntries(formData) as unknown as NewNote;
-    // const data: NewNote = {
-    //   title: formData.get('title') as string,
-    //   content: formData.get('content') as string,
-    //   tag: formData.get('tag') as NewNote['tag'],
-    // };
-    // console.log('form data', data);
-
     mutate(data);
   };
 
@@ -54,12 +51,13 @@ const NoteForm = () => {
           className={css.input}
           defaultValue={draft?.title}
           onChange={handleChange}
+          required
         />
         {/* <span name="title" className={css.error} /> */}
       </div>
 
       <div className={css.formGroup}>
-        <label htmlFor={`${id}-content`}>Content </label>
+        <label htmlFor={`${id}-content`}>Content</label>
         <textarea
           id={`${id}-content`}
           name="content"
@@ -67,37 +65,40 @@ const NoteForm = () => {
           className={css.textarea}
           defaultValue={draft?.content}
           onChange={handleChange}
+          required
         />
-
         {/* <span name="content" className={css.error} /> */}
       </div>
 
       <div className={css.formGroup}>
         <label htmlFor={`${id}-tag`}>Tag</label>
-        {
-          <select
-            id={`${id}-tag`}
-            name="tag"
-            className={css.select}
-            defaultValue={draft?.tag}
-            onChange={handleChange}
-          >
-            {tags.map((tag) => (
-              <option value={tag} key={tag}>
-                {tag}
-              </option>
-            ))}
-          </select>
-        }
+        <select
+          id={`${id}-tag`}
+          name="tag"
+          className={css.select}
+          defaultValue={draft?.tag}
+          onChange={handleChange}
+        >
+          {tags.map((tag) => (
+            <option value={tag} key={tag}>
+              {tag}
+            </option>
+          ))}
+        </select>
         {/* <span name="tag" className={css.error} /> */}
       </div>
 
       <div className={css.actions}>
-        <button type="button" className={css.cancelButton} onClick={handleClickCancel}>
+        <button
+          type="button"
+          className={css.cancelButton}
+          onClick={handleClickCancel}
+          disabled={isPending}
+        >
           Cancel
         </button>
-        <button type="submit" className={css.submitButton}>
-          Create note
+        <button type="submit" className={css.submitButton} disabled={isPending}>
+          {isPending ? 'Creating…' : 'Create note'}
         </button>
       </div>
     </form>
