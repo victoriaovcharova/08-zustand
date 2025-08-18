@@ -1,42 +1,59 @@
-import { fetchNotes } from '@/lib/api';
-import NotesClient from './Notes.client';
-import { Metadata } from 'next';
 
-type Props = {
-  params: Promise<{ slug: string[] }>;
-};
+import type { Metadata } from "next";
+import { fetchNotes } from "@/lib/api";
+import NotesClient from "./Notes.client";
+import type { FetchNoteList } from "@/types/note";
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+type PageProps = { params: Promise<{ slug: string[] }> };
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const tag = slug[0] === 'all' ? 'All notes' : slug[0];
+  const raw = slug?.[0] ?? "all";
+  const isAll = raw.toLowerCase() === "all";
+  const tagUi = isAll ? "All" : raw;
+
+  const title = `Notes: ${tagUi}`;
+  const description = `Notes with tag: ${tagUi}`;
+  const path = `/notes/filter/${encodeURIComponent(raw)}`;
+  const site = "https://08-zustand-livid.vercel.app";
+
   return {
-    title: `Notes: ${tag}`,
-    description: `Notes with tag: ${tag}`,
+    title,
+    description,
     openGraph: {
-      title: `Notes: ${tag}`,
-      description: `Notes with tag: ${tag}`,
-      url: `https://08-zustand-livid.vercel.app/notes/filter/${tag}`,
+      title,
+      description,
+      url: `${site}${path}`,
       images: [
-        {
-          url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
-          width: 1200,
-          height: 630,
-          alt: 'NoteHub logo',
-        },
+        { url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg", width: 1200, height: 630, alt: "NoteHub logo" },
       ],
+      type: "article",
     },
+    alternates: { canonical: path },
   };
 }
 
-export default async function NotesPage({ params }: Props) {
+export default async function NotesPage({ params }: PageProps) {
   const { slug } = await params;
-  console.log('slug', slug);
+  const raw = slug?.[0] ?? "all";
+  const isAll = raw.toLowerCase() === "all";
+  const tagForQuery = isAll ? undefined : raw;
+  const initialTag = isAll ? "All" : raw;
 
-  const initialPage = 1;
-  const initialQuery = '';
-  const initialTag = slug[0] === 'all' ? undefined : slug[0];
-
-  const initialData = await fetchNotes(initialPage, initialQuery, initialTag);
+  let initialData: FetchNoteList;
+  try {
+   
+    initialData = await fetchNotes({
+      page: 1,
+      search: "",
+      ...(tagForQuery ? { tag: tagForQuery } : {}),
+    });
+   
+  } catch (e) {
+    console.error("fetchNotes failed on server:", e);
+   
+    initialData = { notes: [], totalPages: 0 } as FetchNoteList;
+  }
 
   return <NotesClient initialData={initialData} initialTag={initialTag} />;
 }
