@@ -8,7 +8,7 @@ import { fetchNotes } from '@/lib/api';
 import NoteList from '@/components/NoteList/NoteList';
 import SearchBox from '@/components/SearchBox/SearchBox';
 import Pagination from '@/components/Pagination/Pagination';
-import type { FetchNoteList } from '@/types/note';
+import { FetchNoteList } from '@/types/note';
 import Link from 'next/link';
 
 type NotesClientProps = {
@@ -31,19 +31,9 @@ export default function NotesClient({ initialData, initialTag }: NotesClientProp
     debouncedSearch(value);
   };
 
- 
-  const tagParam = initialTag && initialTag.toLowerCase() !== 'all' ? initialTag : undefined;
-
-  const { data, isFetching, isError } = useQuery({
-    queryKey: ['notes', { page: currentPage, search: debouncedValue, tag: tagParam }],
-    
-    queryFn: () =>
-      fetchNotes({
-        page: currentPage,
-        search: debouncedValue,
-        ...(tagParam ? { tag: tagParam } : {}),
-      }),
- 
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['notes', currentPage, debouncedValue, initialTag],
+    queryFn: () => fetchNotes(currentPage, debouncedValue, initialTag),
     placeholderData: keepPreviousData,
     initialData,
   });
@@ -58,19 +48,18 @@ export default function NotesClient({ initialData, initialTag }: NotesClientProp
         {totalPages > 1 && (
           <Pagination
             currentPage={currentPage}
-            onPageChange={(page: number) => setCurrentPage(Math.max(1, page))}
+            onPageChange={(page: number) => setCurrentPage(page)}
             totalPages={totalPages}
           />
         )}
-
         <Link href="/notes/action/create" className={css.button}>
           Note +
         </Link>
       </header>
 
-      {isFetching && <p className={css.loading}>loading notes...</p>}
+      {isLoading && <p className={css.loading}>loading notes...</p>}
       {isError && <p className={css.error}>Server error. Sorry!</p>}
-      {data && !isFetching && <NoteList notes={data.notes} />}
+      {data && !isLoading && <NoteList notes={data.notes} />}
     </div>
   );
 }
