@@ -1,33 +1,36 @@
-import Link from 'next/link';
 import { Metadata } from 'next';
+import css from './Home.module.css';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: "404 Page",
-  description: "Page you are looking for does not exist",
+  title: 'Page not found',
+  description:
+    'Page notSorry, but the page you requested was not found. Check the address or return to the main page. faund',
   openGraph: {
-    title: "404 Page",
-    description: "Page you are looking for does not exist",
-    url: "https://08-zustand-ten-kappa.vercel.app/",
-    images: [
-      {
-        url: 'https://ac.goit.global/fullstack/react/og-meta.jpg',
-        width: 1200,
-        height: 630,
-        alt: "notehub",
-      },
-    ],
-    type: "article",
-  }
+    title: ' Page not found',
+    description:
+      'Sorry, but the page you requested was not found. Check the address or return to the main page.',
+    url: 'https://08-zustand-livid.vercel.app/not-found',
+    siteName: 'NoteHub',
+    images: {
+      url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
+      width: 1200,
+      height: 630,
+      alt: 'White sheet of paper centered with white text NoteHub on blue-green background',
+    },
+  },
 };
-
-
 
 const NotFound = () => {
   return (
     <div>
-      <h1>404 - Page Not Found</h1>
-      <p>Sorry, the page you are looking for does not exist.</p>
-      <Link href="/">Go back home</Link>
+      <h1 className={css.title}>404 - Page not found</h1>
+      <p className={css.description}>Sorry, the page you are looking for does not exist.</p>
+      <div className={css.butto_wrapper}>
+        <Link href="/" className={css.button}>
+          Go back home
+        </Link>
+      </div>
     </div>
   );
 };
