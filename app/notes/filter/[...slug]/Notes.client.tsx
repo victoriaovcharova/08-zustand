@@ -8,12 +8,12 @@ import { fetchNotes } from '@/lib/api';
 import NoteList from '@/components/NoteList/NoteList';
 import SearchBox from '@/components/SearchBox/SearchBox';
 import Pagination from '@/components/Pagination/Pagination';
-import { FetchNoteList } from '@/types/note';
+import type { FetchNoteList } from '@/types/note';
 import Link from 'next/link';
 
 type NotesClientProps = {
   initialData: FetchNoteList;
-  initialTag?: string;
+  initialTag?: string; // 'All' | реальный тег
 };
 
 export default function NotesClient({ initialData, initialTag }: NotesClientProps) {
@@ -22,7 +22,7 @@ export default function NotesClient({ initialData, initialTag }: NotesClientProp
   const [debouncedValue, setDebouncedValue] = useState('');
 
   const debouncedSearch = useDebouncedCallback((value: string) => {
-    setDebouncedValue(value);
+    setDebouncedValue(value.trim());
     setCurrentPage(1);
   }, 300);
 
@@ -31,9 +31,13 @@ export default function NotesClient({ initialData, initialTag }: NotesClientProp
     debouncedSearch(value);
   };
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['notes', currentPage, debouncedValue, initialTag],
-    queryFn: () => fetchNotes(currentPage, debouncedValue, initialTag),
+  // ВАЖНО: не слать "All" в API
+  const tagParam = initialTag && initialTag.toLowerCase() !== 'all' ? initialTag : undefined;
+
+  const { data, isFetching, isError } = useQuery({
+    queryKey: ['notes', { page: currentPage, search: debouncedValue, tag: tagParam }],
+    // позиционный вызов, как у тебя было
+    queryFn: () => fetchNotes(currentPage, debouncedValue, tagParam),
     placeholderData: keepPreviousData,
     initialData,
   });
@@ -48,18 +52,19 @@ export default function NotesClient({ initialData, initialTag }: NotesClientProp
         {totalPages > 1 && (
           <Pagination
             currentPage={currentPage}
-            onPageChange={(page: number) => setCurrentPage(page)}
+            onPageChange={(page: number) => setCurrentPage(Math.max(1, page))}
             totalPages={totalPages}
           />
         )}
+
         <Link href="/notes/action/create" className={css.button}>
           Note +
         </Link>
       </header>
 
-      {isLoading && <p className={css.loading}>loading notes...</p>}
+      {isFetching && <p className={css.loading}>loading notes...</p>}
       {isError && <p className={css.error}>Server error. Sorry!</p>}
-      {data && !isLoading && <NoteList notes={data.notes} />}
+      {data && !isFetching && <NoteList notes={data.notes} />}
     </div>
   );
 }
