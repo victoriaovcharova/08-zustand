@@ -4,34 +4,36 @@ import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useDebouncedCallback } from 'use-debounce';
 import css from './NotesPage.module.css';
-import { fetchNotes, toCanonicalTag } from '@/lib/api';
+import { fetchNotes } from '@/lib/api';
 import NoteList from '@/components/NoteList/NoteList';
 import SearchBox from '@/components/SearchBox/SearchBox';
 import Pagination from '@/components/Pagination/Pagination';
-import { FetchNoteList } from '@/types/note';
+import type { FetchNoteList, NewNote } from '@/types/note';
 import Link from 'next/link';
 
 type NotesClientProps = {
   initialData: FetchNoteList;
-  initialTag?: string;   
-  initialPage?: number;
+  initialTag?: string; // может быть "All" или реальный тег
 };
 
-export default function NotesClient({
-  initialData,
-  initialTag = 'All',
-  initialPage = 1,
-}: NotesClientProps) {
- 
-  const canonical = toCanonicalTag(initialTag) ?? undefined; 
-  const queryTagKey = canonical ?? 'All';
+// допустимые теги из типов
+type Tag = NewNote['tag'];
+const TAGS = ['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'] as const;
 
-  const [currentPage, setCurrentPage] = useState(initialPage);
+// нормализуем строку из slug/UI в типобезопасный тег
+function normalizeTag(raw?: string): Tag | undefined {
+  if (!raw) return undefined;
+  const t = raw[0].toUpperCase() + raw.slice(1).toLowerCase();
+  return (TAGS as readonly string[]).includes(t as Tag) ? (t as Tag) : undefined;
+}
+
+export default function NotesClient({ initialData, initialTag }: NotesClientProps) {
+  const [currentPage, setCurrentPage] = useState(1);
   const [inputValue, setInputValue] = useState('');
   const [debouncedValue, setDebouncedValue] = useState('');
 
   const debouncedSearch = useDebouncedCallback((value: string) => {
-    setDebouncedValue(value);
+    setDebouncedValue(value.trim());
     setCurrentPage(1);
   }, 300);
 
@@ -40,10 +42,17 @@ export default function NotesClient({
     debouncedSearch(value);
   };
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['notes', queryTagKey, currentPage, debouncedValue],
+  // НЕ отправляем "All" и произвольные строки
+  const tagParam = normalizeTag(initialTag);
+
+  const { data, isFetching, isError } = useQuery({
+    queryKey: ['notes', { page: currentPage, search: debouncedValue, tag: tagParam }],
     queryFn: () =>
-      fetchNotes({ page: currentPage, search: debouncedValue, tag: canonical }),
+      fetchNotes({
+        page: currentPage,
+        search: debouncedValue,
+        ...(tagParam ? { tag: tagParam } : {}),
+      }),
     placeholderData: keepPreviousData,
     initialData,
   });
@@ -58,7 +67,7 @@ export default function NotesClient({
         {totalPages > 1 && (
           <Pagination
             currentPage={currentPage}
-            onPageChange={(page: number) => setCurrentPage(page)}
+            onPageChange={(page: number) => setCurrentPage(Math.max(1, page))}
             totalPages={totalPages}
           />
         )}
@@ -68,9 +77,9 @@ export default function NotesClient({
         </Link>
       </header>
 
-      {isLoading && <p className={css.loading}>loading notes...</p>}
+      {isFetching && <p className={css.loading}>loading notes...</p>}
       {isError && <p className={css.error}>Server error. Sorry!</p>}
-      {data && !isLoading && <NoteList notes={data.notes} />}
+      {data && !isFetching && <NoteList notes={data.notes} />}
     </div>
   );
 }
