@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 import { fetchNotes } from "@/lib/api";
 import NotesClient from "./Notes.client";
-import type { FetchNoteList } from "@/types/note";
+import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
 
 // ЕДИНЫЙ тип для страницы и generateMetadata — params как Promise
 type PageProps = { params: Promise<{ slug: string[] }> };
@@ -50,22 +50,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function NotesPage({ params }: PageProps) {
-  const { slug } = await params; // ← тоже await
+  const { slug } = await params;
   const raw = slug?.[0] ?? "all";
-  const tagForApi = normalizeTag(raw);    // Tag | undefined
-  const initialTag = tagForApi ?? "All";  // для UI
+  const tagForApi = normalizeTag(raw);           // Tag | undefined
+  const initialTag = tagForApi ?? "All";         // для UI
 
-  let initialData: FetchNoteList;
+  // Префетч даних під ТОЙ САМИЙ ключ, що у NotesClient
+  const queryClient = new QueryClient();
+  const key = ['notes', { page: 1, search: '', tag: tagForApi }];
+
   try {
-    initialData = await fetchNotes({
-      page: 1,
-      search: "",
-      ...(tagForApi ? { tag: tagForApi } : {}),
+    await queryClient.prefetchQuery({
+      queryKey: key,
+      queryFn: () =>
+        fetchNotes({
+          page: 1,
+          search: '',
+          ...(tagForApi ? { tag: tagForApi } : {}),
+        }),
     });
   } catch (err) {
-    console.error("fetchNotes failed on server:", err);
-    initialData = { notes: [], totalPages: 0 } as FetchNoteList;
+    // не валим SSR — просто лог и продолжаем, клиент сам дотянет
+    console.error('prefetch notes failed:', err);
   }
 
-  return <NotesClient initialData={initialData} initialTag={initialTag} />;
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <NotesClient initialTag={initialTag} />
+    </HydrationBoundary>
+  );
 }

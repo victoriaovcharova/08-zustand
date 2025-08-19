@@ -8,26 +8,24 @@ import { fetchNotes } from '@/lib/api';
 import NoteList from '@/components/NoteList/NoteList';
 import SearchBox from '@/components/SearchBox/SearchBox';
 import Pagination from '@/components/Pagination/Pagination';
-import type { FetchNoteList, NewNote } from '@/types/note';
+import type { NewNote } from '@/types/note';
 import Link from 'next/link';
 
 type NotesClientProps = {
-  initialData: FetchNoteList;
-  initialTag?: string; // может быть "All" или реальный тег
+  initialTag?: string; // "All" або реальний тег
 };
 
-// допустимые теги из типов
+// допустимі теги з доменної моделі
 type Tag = NewNote['tag'];
 const TAGS = ['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'] as const;
 
-// нормализуем строку из slug/UI в типобезопасный тег
 function normalizeTag(raw?: string): Tag | undefined {
   if (!raw) return undefined;
   const t = raw[0].toUpperCase() + raw.slice(1).toLowerCase();
   return (TAGS as readonly string[]).includes(t as Tag) ? (t as Tag) : undefined;
 }
 
-export default function NotesClient({ initialData, initialTag }: NotesClientProps) {
+export default function NotesClient({ initialTag }: NotesClientProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [inputValue, setInputValue] = useState('');
   const [debouncedValue, setDebouncedValue] = useState('');
@@ -42,7 +40,6 @@ export default function NotesClient({ initialData, initialTag }: NotesClientProp
     debouncedSearch(value);
   };
 
-  // НЕ отправляем "All" и произвольные строки
   const tagParam = normalizeTag(initialTag);
 
   const { data, isFetching, isError } = useQuery({
@@ -54,7 +51,6 @@ export default function NotesClient({ initialData, initialTag }: NotesClientProp
         ...(tagParam ? { tag: tagParam } : {}),
       }),
     placeholderData: keepPreviousData,
-    initialData,
   });
 
   const totalPages = data?.totalPages ?? 0;
