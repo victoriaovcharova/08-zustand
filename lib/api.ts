@@ -1,62 +1,69 @@
+
 import axios from 'axios';
 import type { NewNote, Note, FetchNoteList } from '../types/note';
 
-axios.defaults.baseURL = 'https://notehub-public.goit.study/api';
+const api = axios.create({ baseURL: 'https://notehub-public.goit.study/api' });
 
-const token = process.env.NEXT_PUBLIC_NOTEHUB_TOKEN;
+api.interceptors.request.use((config) => {
+  const token = process.env.NEXT_PUBLIC_NOTEHUB_TOKEN;
+  if (token) {
+    config.headers = config.headers ?? {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-export const fetchNotes = async (
-  page: number,
-  search: string,
-  tag?: string
-): Promise<FetchNoteList> => {
-  const params = {
-    perPage: 12,
-    page,
-    tag,
-    search,
+const CANONICAL_TAGS = ['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'] as const;
+type CanonicalTag = (typeof CANONICAL_TAGS)[number];
+
+type FetchNotesArgs = {
+  page?: number;
+  search?: string;
+  tag?: CanonicalTag | undefined; 
+  perPage?: number;
+};
+
+export async function fetchNotes({
+  page = 1,
+  search = '',
+  tag,
+  perPage = 12,
+}: FetchNotesArgs): Promise<FetchNoteList> {
+  const pageNum = Number.isFinite(Number(page)) && Number(page) > 0 ? Number(page) : 1;
+
+  const params: Record<string, string | number> = {
+    perPage,
+    page: pageNum,
   };
 
-  if (search.trim() !== '') {
-    params.search = search;
-  }
+  const s = search.trim();
+  if (s) params.search = s;
 
-  const response = await axios.get<FetchNoteList>(`/notes`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    params,
-  });
+  if (tag) params.tag = tag; 
 
-  return response.data;
-};
+  const { data } = await api.get<FetchNoteList>('/notes', { params });
+  return data;
+}
 
-export const fetchNoteById = async (id: string): Promise<Note> => {
-  const response = await axios.get<Note>(`/notes/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export async function fetchNoteById(id: string): Promise<Note> {
+  const { data } = await api.get<Note>(`/notes/${id}`);
+  return data;
+}
 
-  return response.data;
-};
+export async function createNote(noteData: NewNote): Promise<Note> {
+  const { data } = await api.post<Note>('/notes', noteData);
+  return data;
+}
 
-export const createNote = async (noteData: NewNote): Promise<Note> => {
-  const response = await axios.post<Note>('/notes', noteData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export async function deleteNote(noteId: string): Promise<Note> {
+  const { data } = await api.delete<Note>(`/notes/${noteId}`);
+  return data;
+}
 
-  return response.data;
-};
-
-export const deleteNote = async (noteId: string): Promise<Note> => {
-  const response = await axios.delete<Note>(`/notes/${noteId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return response.data;
-};
+// вспомогалка — пригодится и на странице
+export function toCanonicalTag(slug?: string): CanonicalTag | undefined {
+  if (!slug) return undefined;
+  const lc = slug.toLowerCase();
+  if (lc === 'all') return undefined;
+  return CANONICAL_TAGS.find(t => t.toLowerCase() === lc);
+}

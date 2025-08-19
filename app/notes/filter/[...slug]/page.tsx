@@ -1,21 +1,26 @@
-import { fetchNotes } from '@/lib/api';
-import NotesClient from './Notes.client';
-import { Metadata } from 'next';
 
-type Props = {
-  params: Promise<{ slug: string[] }>;
-};
+import { fetchNotes, toCanonicalTag } from '@/lib/api';
+import NotesClient from './Notes.client';
+import type { Metadata } from 'next';
+
+type Props = { params: { slug?: string[] } }; 
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const tag = slug[0] === 'all' ? 'All notes' : slug[0];
+  const raw = params.slug?.[0] ?? 'all';
+  const canonical = toCanonicalTag(raw);
+  const pageStr = params.slug?.[1] ?? '1';
+  const pageNum = Number.parseInt(pageStr, 10) || 1;
+
+  const titleTag = canonical ?? 'All notes';
+  const urlTag = (canonical ?? 'all').toString().toLowerCase();
+
   return {
-    title: `Notes: ${tag}`,
-    description: `Notes with tag: ${tag}`,
+    title: `Notes: ${titleTag}`,
+    description: `Notes with tag: ${titleTag}`,
     openGraph: {
-      title: `Notes: ${tag}`,
-      description: `Notes with tag: ${tag}`,
-      url: `https://08-zustand-livid.vercel.app/notes/filter/${tag}`,
+      title: `Notes: ${titleTag}`,
+      description: `Notes with tag: ${titleTag}`,
+      url: `https://08-zustand-livid.vercel.app/notes/filter/${urlTag}/${pageNum}`,
       images: [
         {
           url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
@@ -29,14 +34,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function NotesPage({ params }: Props) {
-  const { slug } = await params;
-  console.log('slug', slug);
+  const raw = params.slug?.[0] ?? 'all';
+  const canonicalTag = toCanonicalTag(raw); // undefined для "all"
+  const pageStr = params.slug?.[1] ?? '1';
+  const pageNum = Number.parseInt(pageStr, 10) || 1;
 
-  const initialPage = 1;
-  const initialQuery = '';
-  const initialTag = slug[0] === 'all' ? undefined : slug[0];
+  const initialData = await fetchNotes({
+    page: pageNum,
+    search: '',
+    tag: canonicalTag, 
+  });
 
-  const initialData = await fetchNotes(initialPage, initialQuery, initialTag);
-
-  return <NotesClient initialData={initialData} initialTag={initialTag} />;
+  return (
+    <NotesClient
+      initialData={initialData}
+      initialTag={canonicalTag ?? 'All'}
+      initialPage={pageNum}
+    />
+  );
 }

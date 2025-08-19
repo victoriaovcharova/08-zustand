@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useDebouncedCallback } from 'use-debounce';
 import css from './NotesPage.module.css';
-import { fetchNotes } from '@/lib/api';
+import { fetchNotes, toCanonicalTag } from '@/lib/api';
 import NoteList from '@/components/NoteList/NoteList';
 import SearchBox from '@/components/SearchBox/SearchBox';
 import Pagination from '@/components/Pagination/Pagination';
@@ -13,11 +13,20 @@ import Link from 'next/link';
 
 type NotesClientProps = {
   initialData: FetchNoteList;
-  initialTag?: string;
+  initialTag?: string;   
+  initialPage?: number;
 };
 
-export default function NotesClient({ initialData, initialTag }: NotesClientProps) {
-  const [currentPage, setCurrentPage] = useState(1);
+export default function NotesClient({
+  initialData,
+  initialTag = 'All',
+  initialPage = 1,
+}: NotesClientProps) {
+ 
+  const canonical = toCanonicalTag(initialTag) ?? undefined; 
+  const queryTagKey = canonical ?? 'All';
+
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [inputValue, setInputValue] = useState('');
   const [debouncedValue, setDebouncedValue] = useState('');
 
@@ -32,8 +41,9 @@ export default function NotesClient({ initialData, initialTag }: NotesClientProp
   };
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['notes', currentPage, debouncedValue, initialTag],
-    queryFn: () => fetchNotes(currentPage, debouncedValue, initialTag),
+    queryKey: ['notes', queryTagKey, currentPage, debouncedValue],
+    queryFn: () =>
+      fetchNotes({ page: currentPage, search: debouncedValue, tag: canonical }),
     placeholderData: keepPreviousData,
     initialData,
   });
@@ -52,6 +62,7 @@ export default function NotesClient({ initialData, initialTag }: NotesClientProp
             totalPages={totalPages}
           />
         )}
+
         <Link href="/notes/action/create" className={css.button}>
           Note +
         </Link>
