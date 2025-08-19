@@ -4,9 +4,8 @@ import { fetchNotes } from "@/lib/api";
 import NotesClient from "./Notes.client";
 import type { FetchNoteList } from "@/types/note";
 
-// Для default export — объект; для generateMetadata — Promise
-type PageProps = { params: { slug: string[] } };
-type MetaProps = { params: Promise<{ slug: string[] }> };
+// ЕДИНЫЙ тип для страницы и generateMetadata — params как Promise
+type PageProps = { params: Promise<{ slug: string[] }> };
 
 // допустимые теги
 const TAGS = ["Todo", "Work", "Personal", "Meeting", "Shopping"] as const;
@@ -15,15 +14,16 @@ type Tag = (typeof TAGS)[number];
 function normalizeTag(raw?: string): Tag | undefined {
   if (!raw) return undefined;
   const t = raw[0].toUpperCase() + raw.slice(1).toLowerCase();
-  return (TAGS as readonly string[]).includes(t) ? (t as Tag) : undefined;
+  return (TAGS as readonly string[]).includes(t as Tag) ? (t as Tag) : undefined;
 }
 
-export async function generateMetadata({ params }: MetaProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const raw = slug?.[0] ?? "all";
   const tag = normalizeTag(raw);
   const tagUi = tag ?? "All";
   const path = `/notes/filter/${encodeURIComponent(raw)}`;
+  const site = "https://08-zustand-livid.vercel.app";
 
   const title = `Notes: ${tagUi}`;
   const description = `Notes with tag: ${tagUi}`;
@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: MetaProps): Promise<Metadata>
     openGraph: {
       title,
       description,
-      url: `https://08-zustand-livid.vercel.app${path}`,
+      url: `${site}${path}`,
       images: [
         {
           url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
@@ -50,9 +50,10 @@ export async function generateMetadata({ params }: MetaProps): Promise<Metadata>
 }
 
 export default async function NotesPage({ params }: PageProps) {
-  const raw = params.slug?.[0] ?? "all";
-  const tagForApi = normalizeTag(raw);   // Tag | undefined
-  const initialTag = tagForApi ?? "All";
+  const { slug } = await params; // ← тоже await
+  const raw = slug?.[0] ?? "all";
+  const tagForApi = normalizeTag(raw);    // Tag | undefined
+  const initialTag = tagForApi ?? "All";  // для UI
 
   let initialData: FetchNoteList;
   try {
@@ -61,9 +62,8 @@ export default async function NotesPage({ params }: PageProps) {
       search: "",
       ...(tagForApi ? { tag: tagForApi } : {}),
     });
-  } catch (e) {
-    console.error("fetchNotes failed on server:", e);
-    // строго по твоему типу
+  } catch (err) {
+    console.error("fetchNotes failed on server:", err);
     initialData = { notes: [], totalPages: 0 } as FetchNoteList;
   }
 
