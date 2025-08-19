@@ -1,28 +1,30 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import css from "./NoteDetails.module.css"
-import { useQuery } from "@tanstack/react-query";
-import { fetchNoteById } from "@/lib/api";
-import Loader from "@/components/Loader/Loader";
-import ErrorMessage from "@/components/ErrorMessage/ErrorMessage";
+'use client';
+import React from 'react';
+import css from './NoteDetails.module.css';
+import { fetchNoteById } from '@/lib/api';
+import { useParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 
 const NoteDetailsClient = () => {
+  const { id } = useParams<{ id: string }>();
 
-    const {id} = useParams<{id: string}>()
-    const {data:note, isLoading, error} = useQuery({
-        queryKey: ['note', id],
-        queryFn: ()=> fetchNoteById(id),
-        refetchOnMount: false,
-    })
-
+  const {
+    data: note,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['notes', id],
+    queryFn: () => fetchNoteById(id),
+    refetchOnMount: false,
+  });
+    
     if (isLoading) {
-      return <Loader/>
-    }
+    return <p>Loading, please wait...</p>;
+  }
 
-    if (error || !note) {
-      return <ErrorMessage/>
-    }
+  if (error || !note) {
+    return <p>Something went wrong.</p>;
+  }
 
   return (
     <div className={css.container}>
@@ -37,4 +39,4 @@ const NoteDetailsClient = () => {
   );
 };
 
-export default NoteDetailsClient
+export default NoteDetailsClient;

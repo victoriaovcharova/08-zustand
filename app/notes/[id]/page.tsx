@@ -1,76 +1,43 @@
+import { fetchNoteById } from '@/lib/api';
+import { QueryClient, HydrationBoundary, dehydrate } from '@tanstack/react-query';
+import NoteDetailsClient from './NoteDetails.client';
+import { Metadata } from 'next';
 
-import type { Metadata } from "next";
-import { fetchNoteById } from "@/lib/api";
-import NoteDetailsClient from "./NoteDetails.client";
-import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
+type Props = {
+  params: Promise<{ id: string }>;
+};
 
-type PageProps = { params: Promise<{ id: string }> };
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-
-  try {
-    const note = await fetchNoteById(id);
-    const baseTitle = (note?.title ?? "").trim() || `Note ${id}`;
-    const desc =
-      ((note?.content ?? "").replace(/\s+/g, " ").trim() || `Read details for note ${id}.`).slice(0, 160);
-    const title = `${baseTitle} | NoteHub`;
-
-    return {
-      title,
-      description: desc,
-      openGraph: {
-        title,
-        description: desc,
-        url: `/notes/${id}`,
-        images: [
-          {
-            url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
-            width: 1200,
-            height: 630,
-            alt: "NoteHub logo",
-          },
-        ],
-        type: "article",
-      },
-      alternates: {
-        canonical: `/notes/${id}`,
-      },
-    };
-  } catch {
-    const title = `Note ${id} — Details | NoteHub`;
-    const description = `Read details for note ${id}.`;
-
-    return {
-      title,
-      description,
-      openGraph: {
-        title,
-        description,
-        url: `/notes/${id}`,
-        images: [
-          {
-            url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
-            width: 1200,
-            height: 630,
-            alt: "NoteHub logo",
-          },
-        ],
-        type: "article",
-      },
-      alternates: {
-        canonical: `/notes/${id}`,
-      },
-    };
-  }
+  const note = await fetchNoteById(id);
+  return {
+    title: `Note: ${note.title} `,
+    description: `Note description: ${note.content.slice(0, 30)}`,
+    openGraph: {
+      title: `Note: ${note.title} `,
+      description: `Note description: ${note.content.slice(0, 10)} ...`,
+      siteName: 'NoteHub',
+      url: `https://08-zustand-livid.vercel.app/notes/${id}`,
+      images: [
+        {
+          url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
+          width: 1200,
+          height: 630,
+          alt: 'White sheet of paper centered with white text NoteHub on blue-green background',
+        },
+      ],
+    },
+  };
 }
 
-export default async function NoteDetailsPage({ params }: PageProps) {
+const NoteDetails = async ({ params }: Props) => {
   const { id } = await params;
+  console.log('noteId', id);
 
   const queryClient = new QueryClient();
+
   await queryClient.prefetchQuery({
-    queryKey: ["note", id],
+    queryKey: ['notes', id],
     queryFn: () => fetchNoteById(id),
   });
 
@@ -79,4 +46,6 @@ export default async function NoteDetailsPage({ params }: PageProps) {
       <NoteDetailsClient />
     </HydrationBoundary>
   );
-}
+};
+
+export default NoteDetails;

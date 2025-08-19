@@ -1,15 +1,15 @@
-'use client'
-import css from "./error.module.css"
+'use client';
 
 type Props = {
-    error: Error;
-}
-
+  error: Error;
+};
 
 const Error = ({ error }: Props) => {
-    return(
-        <p className={css.description}>Could not fetch the list of notes. {error.message}</p>
-    )
-}
+  return (
+    <div>
+      <p>Could not fetch note details. {error.message}</p>
+    </div>
+  );
+};
 
-export default Error
+export default Error;

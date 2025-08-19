@@ -1,0 +1,42 @@
+.menuList {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  min-width: 150px;
+}
+
+.menuItem {
+  margin-bottom: 16px;
+}
+
+.menuLinkAll {
+  text-decoration: none;
+  color: white;
+  font-size: 22px;
+  font-weight: bold;
+  display: block;
+  padding: 8px 16px;
+  margin-bottom: 16px;
+
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.menuLink {
+  text-decoration: none;
+  color: white;
+  font-size: 16px;
+  display: block;
+  padding: 8px 16px;
+  transition: background-color 0.3s ease;
+}
+
+.menuLink:hover {
+  background-color: #444;
+  color: #ddd;
+}
+
+.menuLinkAll:hover {
+  background-color: #444;
+  color: #ddd;
+}
