@@ -1,31 +1,21 @@
-// app/notes/filter/[...slug]/page.tsx
-import type { Metadata } from 'next';
 import { fetchNotes } from '@/lib/api';
 import NotesClient from './Notes.client';
-import type { FetchNoteList } from '@/types/note';
+import { Metadata } from 'next';
 
-type Props = { params: Promise<{ slug: string[] }> };
+type Props = {
+  params: Promise<{ slug: string[] }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const raw = slug?.[0] ?? 'all';
-  const isAll = raw.toLowerCase() === 'all';
-
-  // Для тайтла/описания показываем «All notes», а в URL используем исходный slug
-  const tagUi = isAll ? 'All notes' : raw;
-  const path = `/notes/filter/${encodeURIComponent(raw)}`;
-  const site = 'https://08-zustand-livid.vercel.app';
-
-  const title = `Notes: ${tagUi}`;
-  const description = `Notes with tag: ${isAll ? 'All' : raw}`;
-
+  const tag = slug[0] === 'all' ? 'All notes' : slug[0];
   return {
-    title,
-    description,
+    title: `Notes: ${tag}`,
+    description: `Notes with tag: ${tag}`,
     openGraph: {
-      title,
-      description,
-      url: `${site}${path}`,
+      title: `Notes: ${tag}`,
+      description: `Notes with tag: ${tag}`,
+      url: `https://08-zustand-livid.vercel.app/notes/filter/${tag}`,
       images: [
         {
           url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
@@ -34,30 +24,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           alt: 'NoteHub logo',
         },
       ],
-      type: 'article',
     },
-    alternates: { canonical: path },
   };
 }
 
 export default async function NotesPage({ params }: Props) {
   const { slug } = await params;
-  const raw = slug?.[0] ?? 'all';
-  const isAll = raw.toLowerCase() === 'all';
+  console.log('slug', slug);
 
-  // В API НЕ отправляем "All"
-  const tagForQuery = isAll ? undefined : raw;
-  const initialTag = isAll ? 'All' : raw;
+  const initialPage = 1;
+  const initialQuery = '';
+  const initialTag = slug[0] === 'all' ? undefined : slug[0];
 
-  let initialData: FetchNoteList;
-  try {
-    // позиционный вызов, как у тебя было
-    initialData = await fetchNotes(1, '', tagForQuery);
-  } catch (e) {
-    console.error('fetchNotes failed on server:', e);
-    // фолбек строго под твой тип FetchNoteList
-    initialData = { notes: [], totalPages: 0 } as FetchNoteList;
-  }
+  const initialData = await fetchNotes(initialPage, initialQuery, initialTag);
 
   return <NotesClient initialData={initialData} initialTag={initialTag} />;
 }
