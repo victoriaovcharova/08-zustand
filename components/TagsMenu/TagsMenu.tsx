@@ -4,17 +4,19 @@ import { useState } from 'react';
 import Link from 'next/link';
 import css from './TagsMenu.module.css';
 
+// дефолтные теги для меню
 const DEFAULT_TAGS = ['All', 'Todo', 'Work', 'Personal', 'Meeting', 'Shopping'] as const;
+type Tag = (typeof DEFAULT_TAGS)[number];
 
 type Props = {
-  /** Если не передадим — возьмём дефолтные */
-  tags?: readonly string[];
+  /** Если не передать — возьмём DEFAULT_TAGS */
+  tags?: readonly Tag[];
 };
 
 export default function TagsMenu({ tags = DEFAULT_TAGS }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const toggle = () => setIsOpen(v => !v);
+  const toggle = () => setIsOpen((s) => !s);
   const close = () => setIsOpen(false);
 
   return (
@@ -25,10 +27,10 @@ export default function TagsMenu({ tags = DEFAULT_TAGS }: Props) {
 
       {isOpen && (
         <ul className={css.menuList}>
-          {tags.map(tag => (
-            <li className={css.menuItem} key={String(tag)}>
+          {tags.map((tag) => (
+            <li className={css.menuItem} key={tag}>
               <Link
-                href={`/notes/filter/${String(tag).toLowerCase()}/1`}
+                href={`/notes/filter/${encodeURIComponent(tag)}`}
                 className={css.menuLink}
                 onClick={close}
               >
